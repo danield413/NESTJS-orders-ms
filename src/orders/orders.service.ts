@@ -9,16 +9,14 @@ import { PrismaClient } from 'generated/prisma/client';
 import { ChangeOrderStatusDto } from './dto/change-order-status.dto';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { OrderPaginationDto } from './dto/order-pagination.dto';
-import { PRODUCT_SERVICE } from 'src/config/services';
+import { NATS_SERVICE } from 'src/config/services';
 import { firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class OrdersService extends PrismaClient {
   private logger = new Logger(OrdersService.name);
 
-  constructor(
-    @Inject(PRODUCT_SERVICE) private readonly productsClient: ClientProxy,
-  ) {
+  constructor(@Inject(NATS_SERVICE) private readonly client: ClientProxy) {
     const connectionString = process.env.DATABASE_URL;
 
     if (!connectionString || connectionString.trim().length === 0) {
@@ -45,7 +43,7 @@ export class OrdersService extends PrismaClient {
       //1 Confirmar los ids de los productos
       const productIds = createOrderDto.items.map((item) => item.productId);
       const products: any[] = await firstValueFrom(
-        this.productsClient.send({ cmd: 'validate_products' }, productIds),
+        this.client.send({ cmd: 'validate_products' }, productIds),
       );
 
       //2. Cálculos de los valores
@@ -154,7 +152,7 @@ export class OrdersService extends PrismaClient {
 
     const productIds = order.orderItem.map((orderItem) => orderItem.productId);
     const products: any[] = await firstValueFrom(
-      this.productsClient.send({ cmd: 'validate_products' }, productIds),
+      this.client.send({ cmd: 'validate_products' }, productIds),
     );
 
     return {
